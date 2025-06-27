@@ -38,14 +38,19 @@ export async function detectPest(imageFile) {
     const roboflowDetection = await callRoboflowAPI(imageFile)
     console.log('🤖 Resultado Roboflow:', roboflowDetection)
     
-    // 2. Análise científica local (backup)
-    const scientificDetection = analyzeImageForPests(imageData, canvas)
+    // 2. Análise científica local melhorada (backup)
+    const scientificDetection = analyzeImageForPests(imageData, canvas, imageFile)
     console.log('🧬 Detecção científica local:', scientificDetection)
+    
+    // 3. Análise visual avançada (novo)
+    const visualDetection = analyzeImageVisually(imageData, canvas, imageFile)
+    console.log('👁️ Análise visual:', visualDetection)
     
     // Combina resultados priorizando Roboflow
     const finalResult = combineDetectionResults(
       roboflowDetection,
       scientificDetection,
+      visualDetection,
       fileAnalysis,
       canvas.width,
       canvas.height
@@ -128,23 +133,27 @@ async function imageToCanvas(imageFile) {
  */
 async function callRoboflowAPI(imageFile) {
   try {
-    console.log('🤖 Preparando chamada para Roboflow API v4.6 (Modelo Otimizado para Pragas)...')
+    console.log('🤖 Preparando chamada para Roboflow API v4.7 (Correção FormData)...')
     
     console.log('🌐 Enviando requisição para:', ROBOFLOW_CONFIG.modelEndpoint)
     console.log('📊 Tamanho do arquivo:', imageFile.size, 'bytes')
+    console.log('📄 Tipo do arquivo:', imageFile.type)
     
-    // Converte imagem para base64 para enviar como URL
-    const base64Image = await fileToBase64(imageFile)
-    const dataUrl = `data:image/${imageFile.type.split('/')[1]};base64,${base64Image}`
+    // Converte WebP para JPEG se necessário para melhor compatibilidade
+    const processedFile = await convertToJPEG(imageFile)
+    console.log('🔄 Arquivo processado:', processedFile.type, processedFile.size, 'bytes')
     
-    // Formato correto para Roboflow Serverless API usando parâmetros de URL
-    const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}&image=${encodeURIComponent(dataUrl)}`
+    // Usa apenas FormData (mais confiável)
+    const formData = new FormData()
+    formData.append('file', processedFile)
     
-    console.log('📡 URL da requisição:', url.substring(0, 150) + '...')
+    const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}`
     
-    // Faz chamada para API usando GET com imagem na URL
+    console.log('📡 Enviando via FormData para:', url)
+    
     const response = await fetch(url, {
-      method: 'POST'
+      method: 'POST',
+      body: formData
     })
     
     console.log('📡 Status da resposta:', response.status, response.statusText)
@@ -152,60 +161,83 @@ async function callRoboflowAPI(imageFile) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Erro detalhado:', errorText)
-      
-      // Se der erro, tenta formato FormData como fallback
-      console.log('🔄 Tentando formato FormData como fallback...')
-      return await callRoboflowAPIFormData(imageFile)
+      throw new Error(`Erro HTTP: ${response.status} - ${errorText}`)
     }
     
     const result = await response.json()
     console.log('📊 Resposta bruta da API:', result)
-    console.log('✅ Chamada Roboflow Serverless bem-sucedida!')
+    console.log('🔍 Número de predições:', result.predictions ? result.predictions.length : 0)
+    
+    if (result.predictions && result.predictions.length > 0) {
+      console.log('🎉 ROBOFLOW DETECTOU PRAGAS!', result.predictions.length, 'detecções')
+      result.predictions.forEach((pred, i) => {
+        console.log(`🐛 Detecção ${i+1}:`, pred.class, 'confiança:', pred.confidence)
+      })
+    } else {
+      console.log('⚠️ Roboflow não detectou pragas nesta imagem')
+    }
     
     // Processa resultado da API
     return processRoboflowResponse(result)
     
   } catch (error) {
-    console.error('❌ Erro na chamada Roboflow Serverless:', error)
+    console.error('❌ Erro na chamada Roboflow:', error)
     console.log('🔄 Continuando com análise local...')
     return [] // Retorna array vazio para continuar com análise local
   }
 }
 
 /**
- * Formato alternativo usando FormData (fallback)
+ * Converte imagem para JPEG para melhor compatibilidade com Roboflow
  */
-async function callRoboflowAPIFormData(imageFile) {
-  try {
-    console.log('🔄 Tentando formato FormData alternativo...')
-    
-    // Formato FormData
-    const formData = new FormData()
-    formData.append('file', imageFile)
-    
-    const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}`
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData
-    })
-    
-    console.log('📡 Status resposta FormData:', response.status, response.statusText)
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Erro formato FormData:', errorText)
-      throw new Error(`Erro HTTP FormData: ${response.status}`)
+async function convertToJPEG(file) {
+  return new Promise((resolve) => {
+    // Se já é JPEG, retorna o arquivo original
+    if (file.type === 'image/jpeg') {
+      resolve(file)
+      return
     }
     
-    const result = await response.json()
-    console.log('✅ Sucesso com formato FormData!')
-    return processRoboflowResponse(result)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
     
-  } catch (error) {
-    console.error('❌ Erro formato FormData:', error)
-    return []
-  }
+    img.onload = () => {
+      // Redimensiona se muito grande (máximo 1024px)
+      const maxSize = 1024
+      let { width, height } = img
+      
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = (height * maxSize) / width
+          width = maxSize
+        } else {
+          width = (width * maxSize) / height
+          height = maxSize
+        }
+      }
+      
+      canvas.width = width
+      canvas.height = height
+      
+      // Fundo branco para melhor contraste
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillRect(0, 0, width, height)
+      
+      // Desenha a imagem
+      ctx.drawImage(img, 0, 0, width, height)
+      
+      // Converte para JPEG com qualidade alta
+      canvas.toBlob((blob) => {
+        const jpegFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+          type: 'image/jpeg'
+        })
+        resolve(jpegFile)
+      }, 'image/jpeg', 0.9)
+    }
+    
+    img.src = URL.createObjectURL(file)
+  })
 }
 
 /**
@@ -307,31 +339,38 @@ async function fileToBase64(file) {
 /**
  * Combina resultados de detecção priorizando Roboflow API
  */
-function combineDetectionResults(roboflowDetection, scientificDetection, fileAnalysis, width, height) {
+function combineDetectionResults(roboflowDetection, scientificDetection, visualDetection, fileAnalysis, width, height) {
   console.log('🔄 Combinando resultados de detecção...')
   
-  // Prioriza Roboflow, depois detecção científica, depois análise de arquivo
+  // Prioriza Roboflow, depois detecção científica, depois visual, depois análise de arquivo
   let detections = []
   let analysisMethod = 'IA Local'
   
   if (roboflowDetection && roboflowDetection.length > 0) {
     detections = roboflowDetection
     analysisMethod = 'Roboflow API'
-    console.log('🤖 Usando detecção Roboflow como primária')
+    console.log('🤖 Usando resultado Roboflow como primário')
   } else if (scientificDetection && scientificDetection.length > 0) {
     detections = scientificDetection
-    analysisMethod = 'IA Local'
-    console.log('📊 Usando detecção científica como primária')
+    analysisMethod = 'IA Científica Local'
+    console.log('🧬 Usando detecção científica como primária')
+  } else if (visualDetection && visualDetection.length > 0) {
+    detections = visualDetection
+    analysisMethod = 'Análise Visual'
+    console.log('👁️ Usando análise visual como primária')
   } else if (fileAnalysis && fileAnalysis.pestId) {
     // Converte análise de arquivo para formato de detecção
     const pestData = SUGARCANE_PESTS[fileAnalysis.pestId]
     if (pestData) {
       detections = [{
-        id: fileAnalysis.pestId,
-        name: pestData.name,
-        scientificName: pestData.scientificName,
+        pestId: fileAnalysis.pestId,
         confidence: fileAnalysis.confidence,
-        boundingBox: generateCenterBoundingBox(width, height),
+        boundingBox: {
+          x: width * 0.3,
+          y: height * 0.3,
+          width: width * 0.4,
+          height: height * 0.4
+        },
         characteristics: pestData.characteristics,
         source: 'filename'
       }]
@@ -346,16 +385,17 @@ function combineDetectionResults(roboflowDetection, scientificDetection, fileAna
     analysisMethod = 'Fallback Local'
     console.log('🔄 Usando detecção de fallback')
   }  
+  
   // Processa primeira detecção
   const primaryDetection = detections[0]
-  const recommendations = generatePestRecommendations(primaryDetection.id)
+  const recommendations = generatePestRecommendations(primaryDetection.pestId || primaryDetection.id)
   
   const finalResult = {
     // Estrutura compatível com ImageUpload.jsx
-    pestName: primaryDetection.name,
-    scientificName: primaryDetection.scientificName,
-    description: `${primaryDetection.scientificName} - ${primaryDetection.characteristics?.habitat?.join(', ') || 'Praga de cana-de-açúcar'}`,
-    confidence: primaryDetection.confidence,
+    pestName: primaryDetection.name || SUGARCANE_PESTS[primaryDetection.pestId]?.name || 'Praga Detectada',
+    scientificName: primaryDetection.scientificName || SUGARCANE_PESTS[primaryDetection.pestId]?.scientificName || 'Espécie não identificada',
+    description: `${primaryDetection.scientificName || SUGARCANE_PESTS[primaryDetection.pestId]?.scientificName || 'Praga'} - ${primaryDetection.characteristics?.habitat?.join(', ') || 'Praga de cana-de-açúcar'}`,
+    confidence: primaryDetection.confidence || 0.7,
     infestationLevel: primaryDetection.confidence > 0.8 ? 'Alta' : primaryDetection.confidence > 0.6 ? 'Média' : 'Baixa',
     boundingBox: primaryDetection.boundingBox,
     recommendations: recommendations,
@@ -417,6 +457,202 @@ function generateCenterBoundingBox(width, height) {
     y: (height - boxHeight) / 2,
     width: boxWidth,
     height: boxHeight
+  }
+}
+
+
+
+/**
+ * Análise visual avançada da imagem para detectar pragas
+ */
+function analyzeImageVisually(imageData, canvas, imageFile) {
+  console.log('👁️ Iniciando análise visual avançada...')
+  
+  try {
+    const detections = []
+    const width = canvas.width
+    const height = canvas.height
+    const data = imageData.data
+    
+    // Análise de cores características de pragas
+    const colorAnalysis = analyzeColors(data, width, height)
+    console.log('🎨 Análise de cores:', colorAnalysis)
+    
+    // Análise de padrões e formas
+    const patternAnalysis = analyzePatterns(data, width, height)
+    console.log('🔍 Análise de padrões:', patternAnalysis)
+    
+    // Detecta cores características de lagartas (amarelo/laranja)
+    if (colorAnalysis.yellowOrange > 0.05) {
+      detections.push({
+        pestId: 'broca-da-cana',
+        confidence: Math.min(0.8, colorAnalysis.yellowOrange * 10),
+        boundingBox: findColorRegion(data, width, height, 'yellowOrange'),
+        source: 'visual-color',
+        characteristics: SUGARCANE_PESTS['broca-da-cana'].characteristics
+      })
+      console.log('🐛 Detectada possível lagarta por cor amarela/laranja')
+    }
+    
+    // Detecta cores características de cigarrinhas (verde/marrom)
+    if (colorAnalysis.greenBrown > 0.03) {
+      detections.push({
+        pestId: 'cigarrinha-das-raizes',
+        confidence: Math.min(0.7, colorAnalysis.greenBrown * 12),
+        boundingBox: findColorRegion(data, width, height, 'greenBrown'),
+        source: 'visual-color',
+        characteristics: SUGARCANE_PESTS['cigarrinha-das-raizes'].characteristics
+      })
+      console.log('🦗 Detectada possível cigarrinha por cor verde/marrom')
+    }
+    
+    // Detecta padrões de danos na cana (buracos, galerias)
+    if (patternAnalysis.holes > 0.02) {
+      detections.push({
+        pestId: 'broca-da-cana',
+        confidence: Math.min(0.9, patternAnalysis.holes * 15),
+        boundingBox: findDamageRegion(data, width, height),
+        source: 'visual-damage',
+        characteristics: SUGARCANE_PESTS['broca-da-cana'].characteristics
+      })
+      console.log('🕳️ Detectados danos característicos de broca')
+    }
+    
+    console.log(`👁️ Análise visual encontrou ${detections.length} possíveis detecções`)
+    return detections
+    
+  } catch (error) {
+    console.error('❌ Erro na análise visual:', error)
+    return []
+  }
+}
+
+/**
+ * Analisa cores características na imagem
+ */
+function analyzeColors(data, width, height) {
+  let yellowOrange = 0
+  let greenBrown = 0
+  let totalPixels = 0
+  
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
+    
+    // Detecta tons amarelo/laranja (lagartas)
+    if (r > 150 && g > 100 && b < 100 && r > g && g > b) {
+      yellowOrange++
+    }
+    
+    // Detecta tons verde/marrom (cigarrinhas)
+    if ((g > r && g > b && g > 80) || (r > 100 && g > 80 && b < 80)) {
+      greenBrown++
+    }
+    
+    totalPixels++
+  }
+  
+  return {
+    yellowOrange: yellowOrange / (totalPixels / 4),
+    greenBrown: greenBrown / (totalPixels / 4)
+  }
+}
+
+/**
+ * Analisa padrões e formas na imagem
+ */
+function analyzePatterns(data, width, height) {
+  let holes = 0
+  let edges = 0
+  
+  // Detecta bordas e buracos usando diferenças de luminosidade
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = (y * width + x) * 4
+      const current = (data[idx] + data[idx + 1] + data[idx + 2]) / 3
+      
+      // Verifica pixels vizinhos
+      const neighbors = [
+        ((y-1) * width + x) * 4,
+        ((y+1) * width + x) * 4,
+        (y * width + (x-1)) * 4,
+        (y * width + (x+1)) * 4
+      ]
+      
+      let maxDiff = 0
+      neighbors.forEach(nIdx => {
+        if (nIdx >= 0 && nIdx < data.length) {
+          const neighbor = (data[nIdx] + data[nIdx + 1] + data[nIdx + 2]) / 3
+          maxDiff = Math.max(maxDiff, Math.abs(current - neighbor))
+        }
+      })
+      
+      if (maxDiff > 50) edges++
+      if (current < 50 && maxDiff > 80) holes++
+    }
+  }
+  
+  const totalPixels = width * height
+  return {
+    holes: holes / totalPixels,
+    edges: edges / totalPixels
+  }
+}
+
+/**
+ * Encontra região com cor específica
+ */
+function findColorRegion(data, width, height, colorType) {
+  let minX = width, minY = height, maxX = 0, maxY = 0
+  let found = false
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4
+      const r = data[idx]
+      const g = data[idx + 1]
+      const b = data[idx + 2]
+      
+      let isTarget = false
+      if (colorType === 'yellowOrange') {
+        isTarget = r > 150 && g > 100 && b < 100 && r > g && g > b
+      } else if (colorType === 'greenBrown') {
+        isTarget = (g > r && g > b && g > 80) || (r > 100 && g > 80 && b < 80)
+      }
+      
+      if (isTarget) {
+        minX = Math.min(minX, x)
+        minY = Math.min(minY, y)
+        maxX = Math.max(maxX, x)
+        maxY = Math.max(maxY, y)
+        found = true
+      }
+    }
+  }
+  
+  if (!found) {
+    return { x: width * 0.3, y: height * 0.3, width: width * 0.4, height: height * 0.4 }
+  }
+  
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  }
+}
+
+/**
+ * Encontra região com danos
+ */
+function findDamageRegion(data, width, height) {
+  // Simplificado: retorna região central
+  return {
+    x: width * 0.2,
+    y: height * 0.2,
+    width: width * 0.6,
+    height: height * 0.6
   }
 }
 
