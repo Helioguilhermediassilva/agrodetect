@@ -8,10 +8,10 @@ import {
   SUGARCANE_PESTS 
 } from './pest-knowledge-base.js'
 
-// Configuração da API Roboflow
+// Configuração da API Roboflow - v4.1 (Endpoint Correto)
 const ROBOFLOW_CONFIG = {
   apiKey: 'JHigx9j2jdiEVdRLWWX6',
-  modelEndpoint: 'https://detect.roboflow.com/sugarcane-pests-detection/1',
+  modelEndpoint: 'https://detect.roboflow.com/cla-pqr9j/2',
   confidence: 0.5,
   overlap: 0.5
 }
