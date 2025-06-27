@@ -8,10 +8,10 @@ import {
   SUGARCANE_PESTS 
 } from './pest-knowledge-base.js'
 
-// Configuração da API Roboflow - v4.4 (Endpoint Serverless Correto)
+// Configuração da API Roboflow - v4.5 (Modelo Específico de Pragas de Cana)
 const ROBOFLOW_CONFIG = {
   apiKey: 'JHigx9j2jdiEVdRLWWX6',
-  modelEndpoint: 'https://serverless.roboflow.com/cla-pqr9j/2',
+  modelEndpoint: 'https://serverless.roboflow.com/sugar-cane-project/2',
   confidence: 0.5,
   overlap: 0.5
 }
@@ -128,7 +128,7 @@ async function imageToCanvas(imageFile) {
  */
 async function callRoboflowAPI(imageFile) {
   try {
-    console.log('🤖 Preparando chamada para Roboflow API v4.4 (Serverless)...')
+    console.log('🤖 Preparando chamada para Roboflow API v4.5 (Modelo Específico de Pragas)...')
     
     console.log('🌐 Enviando requisição para:', ROBOFLOW_CONFIG.modelEndpoint)
     console.log('📊 Tamanho do arquivo:', imageFile.size, 'bytes')
