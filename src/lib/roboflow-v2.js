@@ -8,10 +8,10 @@ import {
   SUGARCANE_PESTS 
 } from './pest-knowledge-base.js'
 
-// Configuração da API Roboflow - v4.5 (Modelo Específico de Pragas de Cana)
+// Configuração da API Roboflow - v4.6 (Modelo Otimizado para Pragas Agrícolas)
 const ROBOFLOW_CONFIG = {
   apiKey: 'JHigx9j2jdiEVdRLWWX6',
-  modelEndpoint: 'https://serverless.roboflow.com/sugar-cane-project/2',
+  modelEndpoint: 'https://serverless.roboflow.com/agricultural-pests-detection/3',
   confidence: 0.5,
   overlap: 0.5
 }
@@ -128,7 +128,7 @@ async function imageToCanvas(imageFile) {
  */
 async function callRoboflowAPI(imageFile) {
   try {
-    console.log('🤖 Preparando chamada para Roboflow API v4.5 (Modelo Específico de Pragas)...')
+    console.log('🤖 Preparando chamada para Roboflow API v4.6 (Modelo Otimizado para Pragas)...')
     
     console.log('🌐 Enviando requisição para:', ROBOFLOW_CONFIG.modelEndpoint)
     console.log('📊 Tamanho do arquivo:', imageFile.size, 'bytes')
@@ -253,9 +253,22 @@ function processRoboflowResponse(apiResponse) {
 
 /**
  * Mapeia classes do Roboflow para IDs de pragas conhecidas
+ * Modelo: agricultural-pests-detection/3
+ * Classes: Caterpillar, Grasshoppers, Slugs, Weevils
  */
 function mapRoboflowClassToPestId(roboflowClass) {
   const classMapping = {
+    // Modelo agricultural-pests-detection/3
+    'caterpillar': 'broca-da-cana',        // Lagartas → Broca-da-cana
+    'catterpillar': 'broca-da-cana',       // Variação de escrita
+    'weevils': 'bicudo-da-cana',           // Gorgulhos → Bicudo-da-cana
+    'weevil': 'bicudo-da-cana',            // Singular
+    'grasshoppers': 'cigarrinha-das-raizes', // Gafanhotos → Cigarrinha
+    'grasshopper': 'cigarrinha-das-raizes',  // Singular
+    'slugs': 'migdolus',                   // Lesmas → Migdolus (praga de solo)
+    'slug': 'migdolus',                    // Singular
+    
+    // Mapeamentos antigos mantidos para compatibilidade
     'broca-da-cana': 'broca-da-cana',
     'broca_da_cana': 'broca-da-cana',
     'diatraea': 'broca-da-cana',
@@ -269,7 +282,10 @@ function mapRoboflowClassToPestId(roboflowClass) {
   }
   
   const normalizedClass = roboflowClass.toLowerCase().replace(/[^a-z-]/g, '-')
-  return classMapping[normalizedClass] || 'unknown'
+  const mappedId = classMapping[normalizedClass]
+  
+  console.log(`🔄 Mapeando classe "${roboflowClass}" → "${mappedId || 'unknown'}"`)
+  return mappedId || 'unknown'
 }
 
 /**
