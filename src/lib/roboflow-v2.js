@@ -17,8 +17,8 @@ const ROBOFLOW_CONFIG = {
 }
 
 /**
- * Detecta pragas usando abordagem híbrida científica
- * VERSÃO 4.0 - CORREÇÃO DEFINITIVA
+ * Detecta pragas usando abordagem híbrida científica + Roboflow API
+ * VERSÃO 4.0 - CORREÇÃO DEFINITIVA + INTEGRAÇÃO ROBOFLOW
  */
 export async function detectPest(imageFile) {
   console.log('🔬 Iniciando detecção científica avançada v4.0...')
@@ -33,12 +33,18 @@ export async function detectPest(imageFile) {
     const canvas = await imageToCanvas(imageFile)
     const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
     
-    // Análise científica avançada
-    const scientificDetection = analyzeImageForPests(imageData, canvas)
-    console.log('🧬 Detecção científica:', scientificDetection)
+    // 1. NOVA: Chamada para API Roboflow
+    console.log('🤖 Iniciando detecção com Roboflow API...')
+    const roboflowDetection = await callRoboflowAPI(imageFile)
+    console.log('🤖 Resultado Roboflow:', roboflowDetection)
     
-    // Combina resultados
+    // 2. Análise científica local (backup)
+    const scientificDetection = analyzeImageForPests(imageData, canvas)
+    console.log('🧬 Detecção científica local:', scientificDetection)
+    
+    // Combina resultados priorizando Roboflow
     const finalResult = combineDetectionResults(
+      roboflowDetection,
       scientificDetection,
       fileAnalysis,
       canvas.width,
@@ -112,21 +118,153 @@ async function imageToCanvas(imageFile) {
     }
     
     img.onerror = () => reject(new Error('Falha ao carregar imagem'))
+    
     img.src = URL.createObjectURL(imageFile)
   })
 }
 
 /**
- * Combina resultados de detecção científica e análise de arquivo
+ * Chama a API do Roboflow para detecção de pragas
  */
-function combineDetectionResults(scientificDetection, fileAnalysis, width, height) {
+async function callRoboflowAPI(imageFile) {
+  try {
+    console.log('🤖 Preparando chamada para Roboflow API...')
+    
+    // Converte imagem para base64
+    const base64Image = await fileToBase64(imageFile)
+    
+    // Prepara dados para envio
+    const requestData = {
+      image: base64Image,
+      confidence: ROBOFLOW_CONFIG.confidence,
+      overlap: ROBOFLOW_CONFIG.overlap
+    }
+    
+    console.log('🌐 Enviando requisição para:', ROBOFLOW_CONFIG.modelEndpoint)
+    
+    // Faz chamada para API
+    const response = await fetch(`${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData)
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`)
+    }
+    
+    const result = await response.json()
+    console.log('📊 Resposta bruta da API:', result)
+    
+    // Processa resultado da API
+    return processRoboflowResponse(result)
+    
+  } catch (error) {
+    console.error('❌ Erro na chamada Roboflow:', error)
+    console.log('🔄 Continuando com análise local...')
+    return [] // Retorna array vazio para continuar com análise local
+  }
+}
+
+/**
+ * Processa resposta da API Roboflow
+ */
+function processRoboflowResponse(apiResponse) {
+  console.log('🔄 Processando resposta do Roboflow...')
+  
+  if (!apiResponse || !apiResponse.predictions || !Array.isArray(apiResponse.predictions)) {
+    console.log('⚠️ Resposta inválida ou sem predições')
+    return []
+  }
+  
+  const detections = apiResponse.predictions.map((prediction, index) => {
+    console.log(`🔍 Processando predição ${index + 1}:`, prediction)
+    
+    // Mapeia classes do Roboflow para IDs conhecidos
+    const pestId = mapRoboflowClassToPestId(prediction.class)
+    const pestData = SUGARCANE_PESTS[pestId] || {
+      name: prediction.class,
+      scientificName: `${prediction.class} (Roboflow)`,
+      characteristics: { habitat: ['cana-de-açúcar'] }
+    }
+    
+    return {
+      id: pestId,
+      name: pestData.name,
+      scientificName: pestData.scientificName,
+      confidence: prediction.confidence,
+      boundingBox: {
+        x: prediction.x - prediction.width / 2,
+        y: prediction.y - prediction.height / 2,
+        width: prediction.width,
+        height: prediction.height
+      },
+      characteristics: pestData.characteristics,
+      source: 'roboflow',
+      rawPrediction: prediction
+    }
+  })
+  
+  console.log(`✅ Processadas ${detections.length} detecções do Roboflow`)
+  return detections
+}
+
+/**
+ * Mapeia classes do Roboflow para IDs de pragas conhecidas
+ */
+function mapRoboflowClassToPestId(roboflowClass) {
+  const classMapping = {
+    'broca-da-cana': 'broca-da-cana',
+    'broca_da_cana': 'broca-da-cana',
+    'diatraea': 'broca-da-cana',
+    'cigarrinha': 'cigarrinha-das-raizes',
+    'cigarrinha-das-raizes': 'cigarrinha-das-raizes',
+    'mahanarva': 'cigarrinha-das-raizes',
+    'migdolus': 'migdolus',
+    'mosca-branca': 'mosca-branca',
+    'bemisia': 'mosca-branca',
+    'whitefly': 'mosca-branca'
+  }
+  
+  const normalizedClass = roboflowClass.toLowerCase().replace(/[^a-z-]/g, '-')
+  return classMapping[normalizedClass] || 'unknown'
+}
+
+/**
+ * Converte arquivo para base64
+ */
+async function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      // Remove o prefixo "data:image/...;base64,"
+      const base64 = reader.result.split(',')[1]
+      resolve(base64)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * Combina resultados de detecção priorizando Roboflow API
+ */
+function combineDetectionResults(roboflowDetection, scientificDetection, fileAnalysis, width, height) {
   console.log('🔄 Combinando resultados de detecção...')
   
-  // Prioriza detecção científica, depois análise de arquivo
+  // Prioriza Roboflow, depois detecção científica, depois análise de arquivo
   let detections = []
+  let analysisMethod = 'IA Local'
   
-  if (scientificDetection && scientificDetection.length > 0) {
+  if (roboflowDetection && roboflowDetection.length > 0) {
+    detections = roboflowDetection
+    analysisMethod = 'Roboflow API'
+    console.log('🤖 Usando detecção Roboflow como primária')
+  } else if (scientificDetection && scientificDetection.length > 0) {
     detections = scientificDetection
+    analysisMethod = 'IA Local'
     console.log('📊 Usando detecção científica como primária')
   } else if (fileAnalysis && fileAnalysis.pestId) {
     // Converte análise de arquivo para formato de detecção
@@ -141,6 +279,7 @@ function combineDetectionResults(scientificDetection, fileAnalysis, width, heigh
         characteristics: pestData.characteristics,
         source: 'filename'
       }]
+      analysisMethod = 'Análise de Nome do Arquivo'
       console.log('📁 Usando análise de arquivo como primária')
     }
   }
@@ -148,12 +287,9 @@ function combineDetectionResults(scientificDetection, fileAnalysis, width, heigh
   // Se não há detecções, gera detecção padrão
   if (detections.length === 0) {
     detections = [generateFallbackDetection(width, height)]
+    analysisMethod = 'Fallback Local'
     console.log('🔄 Usando detecção de fallback')
-  }
-  
-  // Determina método de análise
-  const analysisMethod = detections[0].source === 'filename' ? 'Análise de Nome do Arquivo' : 'IA Local'
-  
+  }  
   // Processa primeira detecção
   const primaryDetection = detections[0]
   const recommendations = generatePestRecommendations(primaryDetection.id)
