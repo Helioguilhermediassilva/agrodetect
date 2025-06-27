@@ -3,6 +3,7 @@
 
 export const SUGARCANE_PESTS = {
   'broca-da-cana': {
+    name: 'Broca-da-cana',
     scientificName: 'Diatraea saccharalis',
     commonNames: ['Broca-da-cana', 'Lagarta-do-cartucho', 'Broca-do-colmo'],
     characteristics: {
@@ -26,6 +27,7 @@ export const SUGARCANE_PESTS = {
   },
 
   'cigarrinha-das-raizes': {
+    name: 'Cigarrinha-das-raízes',
     scientificName: 'Aeneolamia varia',
     commonNames: ['Cigarrinha-das-raízes', 'Spittle Bug', 'Cigarrinha-da-espuma'],
     characteristics: {
@@ -49,6 +51,7 @@ export const SUGARCANE_PESTS = {
   },
 
   'bicudo-da-cana': {
+    name: 'Bicudo-da-cana',
     scientificName: 'Sphenophorus levis',
     commonNames: ['Bicudo-da-cana', 'Gorgulho-da-cana', 'Besouro-bicudo'],
     characteristics: {
@@ -72,6 +75,7 @@ export const SUGARCANE_PESTS = {
   },
 
   'migdolus': {
+    name: 'Migdolus',
     scientificName: 'Migdolus fryanus',
     commonNames: ['Migdolus', 'Besouro-preto', 'Coró-da-cana'],
     characteristics: {
@@ -95,6 +99,7 @@ export const SUGARCANE_PESTS = {
   },
 
   'cigarrinha-das-folhas': {
+    name: 'Cigarrinha-das-folhas',
     scientificName: 'Mahanarva fimbriolata',
     commonNames: ['Cigarrinha-das-folhas', 'Cigarrinha-da-folha', 'Mahanarva'],
     characteristics: {
@@ -118,6 +123,7 @@ export const SUGARCANE_PESTS = {
   },
 
   'mosca-branca': {
+    name: 'Mosca-branca',
     scientificName: 'Bemisia tabaci',
     commonNames: ['Mosca-branca', 'Bemisia', 'Mosca-branca-da-cana'],
     characteristics: {
