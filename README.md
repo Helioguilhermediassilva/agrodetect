@@ -87,10 +87,57 @@ agrodetect/
 ├── src/
 │   ├── components/
 │   │   ├── ui/              # Componentes shadcn/ui (50+ componentes)
+│   │   │   ├── accordion.jsx
+│   │   │   ├── alert-dialog.jsx
+│   │   │   ├── alert.jsx
+│   │   │   ├── aspect-ratio.jsx
+│   │   │   ├── avatar.jsx
+│   │   │   ├── badge.jsx
+│   │   │   ├── breadcrumb.jsx
+│   │   │   ├── button.jsx
+│   │   │   ├── calendar.jsx
+│   │   │   ├── card.jsx
+│   │   │   ├── carousel.jsx
+│   │   │   ├── chart.jsx
+│   │   │   ├── checkbox.jsx
+│   │   │   ├── collapsible.jsx
+│   │   │   ├── command.jsx
+│   │   │   ├── context-menu.jsx
+│   │   │   ├── dialog.jsx
+│   │   │   ├── drawer.jsx
+│   │   │   ├── dropdown-menu.jsx
+│   │   │   ├── form.jsx
+│   │   │   ├── hover-card.jsx
+│   │   │   ├── input-otp.jsx
+│   │   │   ├── input.jsx
+│   │   │   ├── label.jsx
+│   │   │   ├── menubar.jsx
+│   │   │   ├── navigation-menu.jsx
+│   │   │   ├── pagination.jsx
+│   │   │   ├── popover.jsx
+│   │   │   ├── progress.jsx
+│   │   │   ├── radio-group.jsx
+│   │   │   ├── resizable.jsx
+│   │   │   ├── scroll-area.jsx
+│   │   │   ├── select.jsx
+│   │   │   ├── separator.jsx
+│   │   │   ├── sheet.jsx
+│   │   │   ├── sidebar.jsx
+│   │   │   ├── skeleton.jsx
+│   │   │   ├── slider.jsx
+│   │   │   ├── sonner.jsx
+│   │   │   ├── switch.jsx
+│   │   │   ├── table.jsx
+│   │   │   ├── tabs.jsx
+│   │   │   ├── textarea.jsx
+│   │   │   ├── toggle-group.jsx
+│   │   │   ├── toggle.jsx
+│   │   │   └── tooltip.jsx
 │   │   └── ImageUpload.jsx  # Componente principal de upload
 │   ├── hooks/
 │   │   └── use-mobile.js    # Hook para detecção mobile
 │   ├── lib/
+│   │   ├── roboflow.js      # Serviço de integração Roboflow API
 │   │   └── utils.js         # Utilitários e helpers
 │   ├── assets/
 │   │   └── react.svg        # Assets estáticos
@@ -101,8 +148,12 @@ agrodetect/
 ├── public/                  # Arquivos estáticos
 │   └── favicon.ico
 ├── dist/                    # Build de produção
-├── node_modules/            # Dependências
-├── .git/                    # Controle de versão
+│   ├── assets/
+│   │   ├── index-B0yfYBjX.css
+│   │   └── index-CknSXjAH.js
+│   ├── favicon.ico
+│   └── index.html
+├── .env.example             # Template de variáveis de ambiente
 ├── .gitignore              # Arquivos ignorados pelo Git
 ├── README.md               # Documentação do projeto
 ├── package.json            # Configurações e dependências
