@@ -12,13 +12,6 @@
   ],
   "routes": [
     {
-      "src": "/src/lib/(.*)",
-      "dest": "/src/lib/$1",
-      "headers": {
-        "Cache-Control": "no-cache"
-      }
-    },
-    {
       "src": "/assets/(.*)",
       "dest": "/assets/$1",
       "headers": {
@@ -30,15 +23,8 @@
       "dest": "/index.html"
     }
   ],
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "devCommand": "npm run dev",
+  "installCommand": "npm install --legacy-peer-deps",
   "framework": "vite"
 }
-
