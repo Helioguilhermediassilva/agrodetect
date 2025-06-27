@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge.jsx'
 import { Camera, Upload, X, Loader2, CheckCircle, AlertCircle, Zap } from 'lucide-react'
 import { detectPest } from '../lib/roboflow.js'
 
+// Componente de upload de imagem com análise científica de pragas
+
 export function ImageUpload({ onImageAnalyzed }) {
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
