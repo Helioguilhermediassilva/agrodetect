@@ -2,7 +2,8 @@ import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent } from '@/components/ui/card.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
-import { Camera, Upload, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Camera, Upload, X, Loader2, CheckCircle, AlertCircle, Zap } from 'lucide-react'
+import { detectPest } from '../lib/roboflow.js'
 
 export function ImageUpload({ onImageAnalyzed }) {
   const [selectedImage, setSelectedImage] = useState(null)
@@ -79,41 +80,16 @@ export function ImageUpload({ onImageAnalyzed }) {
     setError(null)
 
     try {
-      // Simular análise da API do Roboflow
-      // Em produção, aqui seria feita a chamada real para a API
-      await new Promise(resolve => setTimeout(resolve, 3000))
-
-      // Resultado simulado
-      const mockResult = {
-        pestName: 'Lagarta-do-cartucho',
-        confidence: 0.87,
-        infestationLevel: 'Moderada',
-        description: 'Spodoptera frugiperda - Uma das principais pragas do milho',
-        recommendations: [
-          {
-            type: 'Controle Biológico',
-            products: ['Bacillus thuringiensis', 'Trichogramma pretiosum'],
-            description: 'Uso de inimigos naturais para controle sustentável'
-          },
-          {
-            type: 'Controle Químico',
-            products: ['Clorantraniliprole', 'Flubendiamide'],
-            description: 'Aplicação de inseticidas específicos quando necessário'
-          },
-          {
-            type: 'Manejo Integrado',
-            products: ['Rotação de culturas', 'Plantas armadilha'],
-            description: 'Práticas preventivas para reduzir infestação'
-          }
-        ]
-      }
-
-      setAnalysisResult(mockResult)
+      // Chama a API real do Roboflow
+      const result = await detectPest(selectedImage)
+      
+      setAnalysisResult(result)
       if (onImageAnalyzed) {
-        onImageAnalyzed(mockResult)
+        onImageAnalyzed(result)
       }
     } catch (err) {
-      setError('Erro ao analisar a imagem. Tente novamente.')
+      console.error('Erro na análise:', err)
+      setError(err.message || 'Erro ao analisar a imagem. Tente novamente.')
     } finally {
       setIsAnalyzing(false)
     }
@@ -125,7 +101,13 @@ export function ImageUpload({ onImageAnalyzed }) {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Resultado da Análise</h3>
+              <div className="flex items-center space-x-2">
+                <Zap className="h-5 w-5 text-green-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Análise Concluída</h3>
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  IA Real
+                </Badge>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -138,12 +120,28 @@ export function ImageUpload({ onImageAnalyzed }) {
             </div>
             
             <div className="grid md:grid-cols-2 gap-6">
-              <div>
+              <div className="relative">
                 <img
                   src={imagePreview}
                   alt="Imagem analisada"
                   className="w-full h-64 object-cover rounded-lg border"
                 />
+                {/* Overlay com bounding box se disponível */}
+                {analysisResult.boundingBox && (
+                  <div 
+                    className="absolute border-2 border-red-500 bg-red-500/20"
+                    style={{
+                      left: `${(analysisResult.boundingBox.x - analysisResult.boundingBox.width/2) / 640 * 100}%`,
+                      top: `${(analysisResult.boundingBox.y - analysisResult.boundingBox.height/2) / 640 * 100}%`,
+                      width: `${analysisResult.boundingBox.width / 640 * 100}%`,
+                      height: `${analysisResult.boundingBox.height / 640 * 100}%`
+                    }}
+                  >
+                    <span className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                      {analysisResult.pestName}
+                    </span>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-4">
@@ -170,6 +168,15 @@ export function ImageUpload({ onImageAnalyzed }) {
                     </Badge>
                   </div>
                 </div>
+
+                {/* Informações adicionais da API */}
+                {analysisResult.allPredictions && analysisResult.allPredictions.length > 1 && (
+                  <div>
+                    <span className="text-sm text-gray-600">
+                      {analysisResult.allPredictions.length} detecções encontradas
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -237,6 +244,12 @@ export function ImageUpload({ onImageAnalyzed }) {
             <p className="text-sm text-gray-500 mt-4">
               Formatos aceitos: JPG, PNG, WebP (máx. 10MB)
             </p>
+            <div className="flex items-center justify-center mt-4 space-x-2">
+              <Zap className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-600 font-medium">
+                Powered by Roboflow AI
+              </span>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -258,7 +271,7 @@ export function ImageUpload({ onImageAnalyzed }) {
             
             <div className="text-center">
               <p className="text-gray-600 mb-4">
-                Imagem carregada com sucesso! Clique em analisar para identificar a praga.
+                Imagem carregada com sucesso! Clique em analisar para identificar a praga usando IA.
               </p>
               <Button
                 onClick={analyzeImage}
@@ -269,15 +282,23 @@ export function ImageUpload({ onImageAnalyzed }) {
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analisando...
+                    Analisando com IA...
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Analisar Imagem
+                    <Zap className="mr-2 h-4 w-4" />
+                    Analisar com Roboflow
                   </>
                 )}
               </Button>
+              <div className="flex items-center justify-center mt-3 space-x-2">
+                <Badge variant="outline" className="text-xs">
+                  Roboflow API
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  Visão Computacional
+                </Badge>
+              </div>
             </div>
           </div>
         )}
