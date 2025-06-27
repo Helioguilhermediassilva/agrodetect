@@ -147,12 +147,6 @@ agrodetect/
 │   └── main.jsx             # Ponto de entrada
 ├── public/                  # Arquivos estáticos
 │   └── favicon.ico
-├── dist/                    # Build de produção
-│   ├── assets/
-│   │   ├── index-B0yfYBjX.css
-│   │   └── index-CknSXjAH.js
-│   ├── favicon.ico
-│   └── index.html
 ├── .env.example             # Template de variáveis de ambiente
 ├── .gitignore              # Arquivos ignorados pelo Git
 ├── README.md               # Documentação do projeto
