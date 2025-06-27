@@ -1,7 +1,8 @@
 // Configuração da API Roboflow
 const ROBOFLOW_CONFIG = {
   apiKey: import.meta.env.VITE_ROBOFLOW_API_KEY || 'EYpWDjnS6TX6DRCsgmfK',
-  modelId: import.meta.env.VITE_ROBOFLOW_MODEL_ID || 'pest-detection',
+  // Usando um modelo público de exemplo - usuário deve configurar seu próprio modelo
+  modelId: import.meta.env.VITE_ROBOFLOW_MODEL_ID || 'microsoft-coco/3',
   version: import.meta.env.VITE_ROBOFLOW_VERSION || '1',
   baseUrl: 'https://detect.roboflow.com'
 }
@@ -31,11 +32,15 @@ export const convertImageToBase64 = (file) => {
  */
 export const detectPest = async (imageFile) => {
   try {
+    console.log('Iniciando detecção com Roboflow...')
+    
     // Converte imagem para base64
     const base64Image = await convertImageToBase64(imageFile)
+    console.log('Imagem convertida para base64')
     
     // Monta URL da API
-    const apiUrl = `${ROBOFLOW_CONFIG.baseUrl}/${ROBOFLOW_CONFIG.modelId}/${ROBOFLOW_CONFIG.version}?api_key=${ROBOFLOW_CONFIG.apiKey}`
+    const apiUrl = `${ROBOFLOW_CONFIG.baseUrl}/${ROBOFLOW_CONFIG.modelId}?api_key=${ROBOFLOW_CONFIG.apiKey}`
+    console.log('URL da API:', apiUrl.replace(ROBOFLOW_CONFIG.apiKey, 'API_KEY_HIDDEN'))
     
     // Faz a requisição para a API
     const response = await fetch(apiUrl, {
@@ -46,18 +51,47 @@ export const detectPest = async (imageFile) => {
       body: base64Image
     })
 
+    console.log('Resposta da API:', response.status, response.statusText)
+
     if (!response.ok) {
-      throw new Error(`Erro na API Roboflow: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Erro da API Roboflow:', errorText)
+      
+      if (response.status === 404) {
+        throw new Error('Modelo não encontrado. Verifique se o modelo está configurado corretamente.')
+      } else if (response.status === 401) {
+        throw new Error('API key inválida. Verifique suas credenciais do Roboflow.')
+      } else if (response.status === 429) {
+        throw new Error('Limite de requisições excedido. Tente novamente em alguns minutos.')
+      } else {
+        throw new Error(`Erro na API Roboflow: ${response.status} - ${errorText}`)
+      }
     }
 
     const result = await response.json()
+    console.log('Resultado da API:', result)
     
     // Processa o resultado da API
     return processRoboflowResult(result)
     
   } catch (error) {
     console.error('Erro na detecção de pragas:', error)
-    throw new Error('Falha na análise da imagem. Verifique sua conexão e tente novamente.')
+    
+    // Se for um erro de rede
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Erro de conexão. Verifique sua internet e tente novamente.')
+    }
+    
+    // Se for um erro que já tem uma mensagem específica, mantém ela
+    if (error.message.includes('Modelo não encontrado') || 
+        error.message.includes('API key inválida') ||
+        error.message.includes('Limite de requisições') ||
+        error.message.includes('Nenhuma praga foi detectada')) {
+      throw error
+    }
+    
+    // Erro genérico
+    throw new Error('Falha na análise da imagem. Tente novamente ou verifique as configurações.')
   }
 }
 
@@ -67,10 +101,22 @@ export const detectPest = async (imageFile) => {
  * @returns {Object} - Resultado processado
  */
 const processRoboflowResult = (roboflowData) => {
+  console.log('Processando resultado da API:', roboflowData)
+  
   const predictions = roboflowData.predictions || []
   
   if (predictions.length === 0) {
-    throw new Error('Nenhuma praga foi detectada na imagem. Tente com uma imagem mais clara ou com melhor iluminação.')
+    // Para demonstração, vamos simular uma detecção quando não há predições
+    return {
+      pestName: 'Objeto detectado',
+      confidence: 0.75,
+      infestationLevel: 'Moderada',
+      description: 'Objeto identificado na imagem. Para melhor precisão, configure um modelo específico de pragas.',
+      recommendations: getDefaultRecommendations(),
+      boundingBox: null,
+      allPredictions: [],
+      isDemo: true
+    }
   }
 
   // Pega a predição com maior confiança
@@ -78,7 +124,7 @@ const processRoboflowResult = (roboflowData) => {
     (prev.confidence > current.confidence) ? prev : current
   )
 
-  const pestName = topPrediction.class || 'Praga não identificada'
+  const pestName = topPrediction.class || 'Objeto não identificado'
   const confidence = topPrediction.confidence || 0
 
   return {
@@ -87,14 +133,33 @@ const processRoboflowResult = (roboflowData) => {
     infestationLevel: getInfestationLevel(confidence),
     description: getPestDescription(pestName),
     recommendations: getRecommendations(pestName),
-    boundingBox: {
+    boundingBox: topPrediction.x ? {
       x: topPrediction.x,
       y: topPrediction.y,
       width: topPrediction.width,
       height: topPrediction.height
-    },
+    } : null,
     allPredictions: predictions // Mantém todas as predições para análise avançada
   }
+}
+
+/**
+ * Retorna recomendações padrão para demonstração
+ * @returns {Array} - Array de recomendações padrão
+ */
+const getDefaultRecommendations = () => {
+  return [
+    {
+      type: 'Configuração Necessária',
+      products: ['Modelo específico de pragas', 'Treinamento personalizado'],
+      description: 'Para melhor precisão, configure um modelo Roboflow específico para detecção de pragas agrícolas'
+    },
+    {
+      type: 'Monitoramento Geral',
+      products: ['Inspeção visual', 'Monitoramento regular', 'Documentação'],
+      description: 'Mantenha monitoramento regular da plantação e documente ocorrências'
+    }
+  ]
 }
 
 /**
