@@ -128,25 +128,25 @@ async function imageToCanvas(imageFile) {
  */
 async function callRoboflowAPI(imageFile) {
   try {
-    console.log('🤖 Preparando chamada para Roboflow API v4.2...')
-    
-    // Converte imagem para base64 (sem prefixo data:image)
-    const base64Image = await fileToBase64(imageFile)
-    const cleanBase64 = base64Image.replace(/^data:image\/[a-z]+;base64,/, '')
+    console.log('🤖 Preparando chamada para Roboflow API v4.3...')
     
     console.log('🌐 Enviando requisição para:', ROBOFLOW_CONFIG.modelEndpoint)
-    console.log('📊 Tamanho da imagem base64:', cleanBase64.length, 'caracteres')
+    console.log('📊 Tamanho do arquivo:', imageFile.size, 'bytes')
     
-    // Formato correto para Roboflow API
+    // Formato correto para Roboflow API usando FormData
+    const formData = new FormData()
+    formData.append('file', imageFile)
+    
+    // URL com parâmetros de configuração
     const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}`
     
-    // Faz chamada para API com formato correto
+    console.log('📡 URL completa:', url)
+    
+    // Faz chamada para API com formato FormData
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: cleanBase64
+      body: formData
+      // Não definir Content-Type - deixar o browser definir automaticamente para FormData
     })
     
     console.log('📡 Status da resposta:', response.status, response.statusText)
@@ -154,7 +154,10 @@ async function callRoboflowAPI(imageFile) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Erro detalhado:', errorText)
-      throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`)
+      
+      // Se ainda der erro, tenta formato alternativo com base64
+      console.log('🔄 Tentando formato alternativo com base64...')
+      return await callRoboflowAPIBase64(imageFile)
     }
     
     const result = await response.json()
@@ -168,6 +171,44 @@ async function callRoboflowAPI(imageFile) {
     console.error('❌ Erro na chamada Roboflow:', error)
     console.log('🔄 Continuando com análise local...')
     return [] // Retorna array vazio para continuar com análise local
+  }
+}
+
+/**
+ * Formato alternativo usando base64 (fallback)
+ */
+async function callRoboflowAPIBase64(imageFile) {
+  try {
+    console.log('🔄 Tentando formato base64 alternativo...')
+    
+    // Converte para base64
+    const base64Image = await fileToBase64(imageFile)
+    
+    const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}`
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: base64Image
+    })
+    
+    console.log('📡 Status resposta base64:', response.status, response.statusText)
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Erro formato base64:', errorText)
+      throw new Error(`Erro HTTP base64: ${response.status}`)
+    }
+    
+    const result = await response.json()
+    console.log('✅ Sucesso com formato base64!')
+    return processRoboflowResponse(result)
+    
+  } catch (error) {
+    console.error('❌ Erro formato base64:', error)
+    return []
   }
 }
 
@@ -242,7 +283,7 @@ async function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
-      // Remove o prefixo "data:image/...;base64,"
+      // Remove o prefixo "data:image/...;base64," e retorna apenas o base64
       const base64 = reader.result.split(',')[1]
       resolve(base64)
     }
