@@ -1,4 +1,5 @@
 // Integração Avançada com Base de Conhecimento Científico
+// Versão 3.1 - Correção definitiva da página em branco
 import { 
   analyzeImageForPests, 
   analyzeFileName, 
@@ -19,7 +20,7 @@ const ROBOFLOW_CONFIG = {
  * Detecta pragas usando abordagem híbrida científica
  */
 export async function detectPest(imageFile) {
-  console.log('🔬 Iniciando detecção científica avançada...')
+  console.log('🔬 Iniciando detecção científica avançada v3.1...')
   
   try {
     // Análise do nome do arquivo
@@ -42,12 +43,43 @@ export async function detectPest(imageFile) {
       canvas.height
     )
     
-    console.log('✅ Resultado final:', finalResult)
+    console.log('✅ Resultado final v3.1:', finalResult)
+    
+    // Validação final do resultado
+    if (!finalResult || typeof finalResult !== 'object') {
+      throw new Error('Resultado inválido gerado pela análise')
+    }
+    
+    if (!finalResult.pestName || !finalResult.recommendations) {
+      throw new Error('Propriedades obrigatórias ausentes no resultado')
+    }
+    
     return finalResult
     
   } catch (error) {
-    console.error('❌ Erro na detecção:', error)
-    throw new Error('Falha na análise da imagem. Tente novamente.')
+    console.error('❌ Erro na detecção v3.1:', error)
+    console.error('Stack trace:', error.stack)
+    
+    // Retorna resultado de fallback seguro
+    return {
+      pestName: 'Erro na Análise',
+      scientificName: 'Análise não concluída',
+      description: 'Ocorreu um erro durante a análise. Tente novamente.',
+      confidence: 0,
+      infestationLevel: 'Desconhecida',
+      boundingBox: null,
+      recommendations: [
+        {
+          type: 'Recomendação Geral',
+          description: 'Consulte um especialista para análise manual da imagem.',
+          products: ['Análise manual', 'Consulta especializada']
+        }
+      ],
+      isIntelligentAnalysis: false,
+      analysisMethod: 'Fallback de Erro',
+      allPredictions: [],
+      error: error.message
+    }
   }
 }
 
@@ -112,7 +144,7 @@ function combineDetectionResults(scientificDetection, fileAnalysis, width, heigh
   const primaryDetection = detections[0]
   const recommendations = generatePestRecommendations(primaryDetection.id)
   
-  return {
+  const finalResult = {
     // Estrutura compatível com ImageUpload.jsx
     pestName: primaryDetection.name,
     scientificName: primaryDetection.scientificName,
@@ -137,9 +169,14 @@ function combineDetectionResults(scientificDetection, fileAnalysis, width, heigh
     metadata: {
       imageSize: { width, height },
       processingTime: Date.now(),
-      version: '3.0-scientific'
+      version: '3.1-fixed'
     }
   }
+  
+  console.log('🎯 Resultado final estruturado:', finalResult)
+  console.log('📊 Propriedades do resultado:', Object.keys(finalResult))
+  
+  return finalResult
 }
 
 /**
