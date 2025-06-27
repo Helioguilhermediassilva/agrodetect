@@ -562,7 +562,31 @@ export function generatePestRecommendations(pestId) {
     }
   }
   
-  return recommendations[pestId] || getDefaultRecommendations()
+  const pestRecommendations = recommendations[pestId] || getDefaultRecommendations()
+  
+  // Converte para formato esperado pelo componente ImageUpload
+  return [
+    {
+      type: 'Controle Químico',
+      description: 'Aplicação de inseticidas específicos para controle efetivo da praga.',
+      products: pestRecommendations.chemical
+    },
+    {
+      type: 'Controle Biológico',
+      description: 'Uso de agentes biológicos para controle sustentável e ecológico.',
+      products: pestRecommendations.biological
+    },
+    {
+      type: 'Controle Cultural',
+      description: 'Práticas de manejo que reduzem a incidência e desenvolvimento da praga.',
+      products: pestRecommendations.cultural
+    },
+    {
+      type: 'Monitoramento',
+      description: 'Técnicas para acompanhar e detectar precocemente a presença da praga.',
+      products: pestRecommendations.monitoring
+    }
+  ]
 }
 
 function getDefaultRecommendations() {

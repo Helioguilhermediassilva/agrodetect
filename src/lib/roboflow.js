@@ -113,15 +113,25 @@ function combineDetectionResults(scientificDetection, fileAnalysis, width, heigh
   const recommendations = generatePestRecommendations(primaryDetection.id)
   
   return {
+    // Estrutura compatível com ImageUpload.jsx
+    pestName: primaryDetection.name,
+    scientificName: primaryDetection.scientificName,
+    description: `${primaryDetection.scientificName} - ${primaryDetection.characteristics?.habitat?.join(', ') || 'Praga de cana-de-açúcar'}`,
+    confidence: primaryDetection.confidence,
+    infestationLevel: primaryDetection.confidence > 0.8 ? 'Alta' : primaryDetection.confidence > 0.6 ? 'Média' : 'Baixa',
+    boundingBox: primaryDetection.boundingBox,
+    recommendations: recommendations,
+    isIntelligentAnalysis: true,
+    analysisMethod: analysisMethod,
+    allPredictions: detections,
+    
+    // Dados adicionais para compatibilidade
     pest: {
       name: primaryDetection.name,
       scientificName: primaryDetection.scientificName,
       confidence: Math.round(primaryDetection.confidence * 100),
       characteristics: primaryDetection.characteristics
     },
-    boundingBox: primaryDetection.boundingBox,
-    recommendations,
-    analysisMethod,
     detectionCount: detections.length,
     allDetections: detections,
     metadata: {
