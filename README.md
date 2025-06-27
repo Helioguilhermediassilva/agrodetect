@@ -86,14 +86,31 @@ VITE_ROBOFLOW_MODEL_ID=seu_modelo_id
 agrodetect/
 ├── src/
 │   ├── components/
-│   │   ├── ui/              # Componentes shadcn/ui
+│   │   ├── ui/              # Componentes shadcn/ui (50+ componentes)
 │   │   └── ImageUpload.jsx  # Componente principal de upload
+│   ├── hooks/
+│   │   └── use-mobile.js    # Hook para detecção mobile
+│   ├── lib/
+│   │   └── utils.js         # Utilitários e helpers
+│   ├── assets/
+│   │   └── react.svg        # Assets estáticos
 │   ├── App.jsx              # Componente principal
 │   ├── App.css              # Estilos customizados
+│   ├── index.css            # Estilos globais
 │   └── main.jsx             # Ponto de entrada
 ├── public/                  # Arquivos estáticos
+│   └── favicon.ico
 ├── dist/                    # Build de produção
-└── docs/                    # Documentação
+├── node_modules/            # Dependências
+├── .git/                    # Controle de versão
+├── .gitignore              # Arquivos ignorados pelo Git
+├── README.md               # Documentação do projeto
+├── package.json            # Configurações e dependências
+├── vite.config.js          # Configuração do Vite
+├── components.json         # Configuração shadcn/ui
+├── eslint.config.js        # Configuração ESLint
+├── jsconfig.json           # Configuração JavaScript
+└── pnpm-lock.yaml          # Lock file das dependências
 ```
 
 ## 🤝 Contribuição
