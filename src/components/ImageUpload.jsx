@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent } from '@/components/ui/card.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Camera, Upload, X, Loader2, CheckCircle, AlertCircle, Zap } from 'lucide-react'
-import { detectPest } from '../lib/roboflow.js'
+import { detectPest } from '../lib/roboflow-v2.js'
 
 // Componente de upload de imagem com análise científica de pragas
 
