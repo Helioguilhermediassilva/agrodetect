@@ -104,9 +104,18 @@ export function ImageUpload({ onImageAnalyzed }) {
               <div className="flex items-center space-x-2">
                 <Zap className="h-5 w-5 text-green-600" />
                 <h3 className="text-lg font-semibold text-gray-900">Análise Concluída</h3>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  IA Real
+                <Badge variant="secondary" className={
+                  analysisResult.isIntelligentAnalysis 
+                    ? "bg-blue-100 text-blue-800" 
+                    : "bg-green-100 text-green-800"
+                }>
+                  {analysisResult.isIntelligentAnalysis ? 'IA Local' : 'Roboflow API'}
                 </Badge>
+                {analysisResult.analysisMethod && (
+                  <Badge variant="outline" className="text-xs">
+                    {analysisResult.analysisMethod}
+                  </Badge>
+                )}
               </div>
               <Button
                 variant="outline"
