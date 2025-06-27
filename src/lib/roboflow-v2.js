@@ -128,35 +128,38 @@ async function imageToCanvas(imageFile) {
  */
 async function callRoboflowAPI(imageFile) {
   try {
-    console.log('🤖 Preparando chamada para Roboflow API...')
+    console.log('🤖 Preparando chamada para Roboflow API v4.2...')
     
-    // Converte imagem para base64
+    // Converte imagem para base64 (sem prefixo data:image)
     const base64Image = await fileToBase64(imageFile)
-    
-    // Prepara dados para envio
-    const requestData = {
-      image: base64Image,
-      confidence: ROBOFLOW_CONFIG.confidence,
-      overlap: ROBOFLOW_CONFIG.overlap
-    }
+    const cleanBase64 = base64Image.replace(/^data:image\/[a-z]+;base64,/, '')
     
     console.log('🌐 Enviando requisição para:', ROBOFLOW_CONFIG.modelEndpoint)
+    console.log('📊 Tamanho da imagem base64:', cleanBase64.length, 'caracteres')
     
-    // Faz chamada para API
-    const response = await fetch(`${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}`, {
+    // Formato correto para Roboflow API
+    const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}`
+    
+    // Faz chamada para API com formato correto
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(requestData)
+      body: cleanBase64
     })
     
+    console.log('📡 Status da resposta:', response.status, response.statusText)
+    
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Erro detalhado:', errorText)
       throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`)
     }
     
     const result = await response.json()
     console.log('📊 Resposta bruta da API:', result)
+    console.log('✅ Chamada Roboflow bem-sucedida!')
     
     // Processa resultado da API
     return processRoboflowResponse(result)
