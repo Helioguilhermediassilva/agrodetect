@@ -10,7 +10,7 @@ import {
 
 // Configuração da API Roboflow
 const ROBOFLOW_CONFIG = {
-  apiKey: 'EYpWDjnS6TX6DRCsgmfK',
+  apiKey: 'JHigx9j2jdiEVdRLWWX6',
   modelEndpoint: 'https://detect.roboflow.com/sugarcane-pests-detection/1',
   confidence: 0.5,
   overlap: 0.5
