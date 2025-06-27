@@ -8,10 +8,10 @@ import {
   SUGARCANE_PESTS 
 } from './pest-knowledge-base.js'
 
-// Configuração da API Roboflow - v4.1 (Endpoint Correto)
+// Configuração da API Roboflow - v4.4 (Endpoint Serverless Correto)
 const ROBOFLOW_CONFIG = {
   apiKey: 'JHigx9j2jdiEVdRLWWX6',
-  modelEndpoint: 'https://detect.roboflow.com/cla-pqr9j/2',
+  modelEndpoint: 'https://serverless.roboflow.com/cla-pqr9j/2',
   confidence: 0.5,
   overlap: 0.5
 }
@@ -128,25 +128,23 @@ async function imageToCanvas(imageFile) {
  */
 async function callRoboflowAPI(imageFile) {
   try {
-    console.log('🤖 Preparando chamada para Roboflow API v4.3...')
+    console.log('🤖 Preparando chamada para Roboflow API v4.4 (Serverless)...')
     
     console.log('🌐 Enviando requisição para:', ROBOFLOW_CONFIG.modelEndpoint)
     console.log('📊 Tamanho do arquivo:', imageFile.size, 'bytes')
     
-    // Formato correto para Roboflow API usando FormData
-    const formData = new FormData()
-    formData.append('file', imageFile)
+    // Converte imagem para base64 para enviar como URL
+    const base64Image = await fileToBase64(imageFile)
+    const dataUrl = `data:image/${imageFile.type.split('/')[1]};base64,${base64Image}`
     
-    // URL com parâmetros de configuração
-    const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}`
+    // Formato correto para Roboflow Serverless API usando parâmetros de URL
+    const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}&image=${encodeURIComponent(dataUrl)}`
     
-    console.log('📡 URL completa:', url)
+    console.log('📡 URL da requisição:', url.substring(0, 150) + '...')
     
-    // Faz chamada para API com formato FormData
+    // Faz chamada para API usando GET com imagem na URL
     const response = await fetch(url, {
-      method: 'POST',
-      body: formData
-      // Não definir Content-Type - deixar o browser definir automaticamente para FormData
+      method: 'POST'
     })
     
     console.log('📡 Status da resposta:', response.status, response.statusText)
@@ -155,59 +153,57 @@ async function callRoboflowAPI(imageFile) {
       const errorText = await response.text()
       console.error('❌ Erro detalhado:', errorText)
       
-      // Se ainda der erro, tenta formato alternativo com base64
-      console.log('🔄 Tentando formato alternativo com base64...')
-      return await callRoboflowAPIBase64(imageFile)
+      // Se der erro, tenta formato FormData como fallback
+      console.log('🔄 Tentando formato FormData como fallback...')
+      return await callRoboflowAPIFormData(imageFile)
     }
     
     const result = await response.json()
     console.log('📊 Resposta bruta da API:', result)
-    console.log('✅ Chamada Roboflow bem-sucedida!')
+    console.log('✅ Chamada Roboflow Serverless bem-sucedida!')
     
     // Processa resultado da API
     return processRoboflowResponse(result)
     
   } catch (error) {
-    console.error('❌ Erro na chamada Roboflow:', error)
+    console.error('❌ Erro na chamada Roboflow Serverless:', error)
     console.log('🔄 Continuando com análise local...')
     return [] // Retorna array vazio para continuar com análise local
   }
 }
 
 /**
- * Formato alternativo usando base64 (fallback)
+ * Formato alternativo usando FormData (fallback)
  */
-async function callRoboflowAPIBase64(imageFile) {
+async function callRoboflowAPIFormData(imageFile) {
   try {
-    console.log('🔄 Tentando formato base64 alternativo...')
+    console.log('🔄 Tentando formato FormData alternativo...')
     
-    // Converte para base64
-    const base64Image = await fileToBase64(imageFile)
+    // Formato FormData
+    const formData = new FormData()
+    formData.append('file', imageFile)
     
     const url = `${ROBOFLOW_CONFIG.modelEndpoint}?api_key=${ROBOFLOW_CONFIG.apiKey}&confidence=${ROBOFLOW_CONFIG.confidence}&overlap=${ROBOFLOW_CONFIG.overlap}`
     
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: base64Image
+      body: formData
     })
     
-    console.log('📡 Status resposta base64:', response.status, response.statusText)
+    console.log('📡 Status resposta FormData:', response.status, response.statusText)
     
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Erro formato base64:', errorText)
-      throw new Error(`Erro HTTP base64: ${response.status}`)
+      console.error('❌ Erro formato FormData:', errorText)
+      throw new Error(`Erro HTTP FormData: ${response.status}`)
     }
     
     const result = await response.json()
-    console.log('✅ Sucesso com formato base64!')
+    console.log('✅ Sucesso com formato FormData!')
     return processRoboflowResponse(result)
     
   } catch (error) {
-    console.error('❌ Erro formato base64:', error)
+    console.error('❌ Erro formato FormData:', error)
     return []
   }
 }
