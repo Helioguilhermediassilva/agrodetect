@@ -420,7 +420,33 @@ export function analyzeFileName(fileName) {
  */
 export function generatePestRecommendations(pestId) {
   const pestData = SUGARCANE_PESTS[pestId]
-  if (!pestData) return getDefaultRecommendations()
+  
+  // Se não encontrar dados da praga, usar recomendações padrão
+  if (!pestData) {
+    const defaultRecs = getDefaultRecommendations()
+    return [
+      {
+        type: 'Controle Químico',
+        description: 'Aplicação de inseticidas específicos para controle efetivo da praga.',
+        products: defaultRecs.chemical
+      },
+      {
+        type: 'Controle Biológico',
+        description: 'Uso de agentes biológicos para controle sustentável e ecológico.',
+        products: defaultRecs.biological
+      },
+      {
+        type: 'Controle Cultural',
+        description: 'Práticas de manejo que reduzem a incidência e desenvolvimento da praga.',
+        products: defaultRecs.cultural
+      },
+      {
+        type: 'Monitoramento',
+        description: 'Técnicas para acompanhar e detectar precocemente a presença da praga.',
+        products: defaultRecs.monitoring
+      }
+    ]
+  }
   
   const recommendations = {
     'broca-da-cana': {
